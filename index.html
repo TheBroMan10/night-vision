@@ -1,82 +1,64 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Night Vision WebCam</title>
-  <style>
-    body {
-      margin: 0;
-      background: black;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-    video {
-      width: 100vw;
-      height: 100vh;
-      object-fit: cover;
-      transform: scaleX(1); /* make sure not mirrored */
-      filter: brightness(6) contrast(2) saturate(1.2) hue-rotate(90deg);
-    }
-    .controls {
-      position: fixed;
-      bottom: 10px;
-      background: rgba(0,0,0,0.6);
-      padding: 10px;
-      border-radius: 10px;
-      display: flex;
-      gap: 10px;
-      color: white;
-      font-family: sans-serif;
-    }
-    label {
-      display: flex;
-      flex-direction: column;
-      font-size: 12px;
-      align-items: center;
-      color: white;
-    }
-  </style>
+<meta charset="UTF-8">
+<title>Night Vision Canvas</title>
+<style>
+  body { margin:0; background:black; overflow:hidden; display:flex; flex-direction:column; align-items:center; }
+  canvas { width:100vw; height:100vh; display:block; }
+  .controls { position:fixed; bottom:10px; background:rgba(0,0,0,0.6); padding:10px; border-radius:10px; display:flex; gap:10px; color:white; font-family:sans-serif; }
+  label { display:flex; flex-direction:column; font-size:12px; align-items:center; color:white; }
+</style>
 </head>
 <body>
-  <video id="video" autoplay playsinline></video>
 
-  <div class="controls">
-    <label>Brightness
-      <input id="brightness" type="range" min="1" max="15" step="0.1" value="6">
-    </label>
-    <label>Contrast
-      <input id="contrast" type="range" min="1" max="5" step="0.1" value="2">
-    </label>
-    <label>Green
-      <input id="green" type="checkbox" checked>
-    </label>
-  </div>
+<video id="video" autoplay playsinline style="display:none;"></video>
+<canvas id="canvas"></canvas>
 
-  <script>
-    const video = document.getElementById('video');
-    const brightnessSlider = document.getElementById('brightness');
-    const contrastSlider = document.getElementById('contrast');
-    const greenToggle = document.getElementById('green');
+<div class="controls">
+  <label>Brightness
+    <input id="brightness" type="range" min="0" max="3" step="0.05" value="1">
+  </label>
+  <label>Contrast
+    <input id="contrast" type="range" min="0" max="3" step="0.05" value="1">
+  </label>
+</div>
 
-    // Start camera
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-      .then(stream => { video.srcObject = stream; })
-      .catch(err => { alert("Camera access failed: " + err); });
+<script>
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
 
-    function updateFilters() {
-      const b = brightnessSlider.value;
-      const c = contrastSlider.value;
-      const green = greenToggle.checked ? "hue-rotate(90deg) saturate(1.2)" : "";
-      video.style.filter = `brightness(${b}) contrast(${c}) ${green}`;
-    }
+const brightnessSlider = document.getElementById('brightness');
+const contrastSlider = document.getElementById('contrast');
 
-    brightnessSlider.addEventListener('input', updateFilters);
-    contrastSlider.addEventListener('input', updateFilters);
-    greenToggle.addEventListener('change', updateFilters);
+function updateCanvasSize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', updateCanvasSize);
+updateCanvasSize();
 
-    updateFilters(); // initialize
-  </script>
+navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+  .then(stream => { video.srcObject = stream; })
+  .catch(err => { alert("Camera access failed: " + err); });
+
+function applyFilters(frame) {
+  const b = parseFloat(brightnessSlider.value);
+  const c = parseFloat(contrastSlider.value);
+
+  ctx.filter = `brightness(${b}) contrast(${c}) saturate(1.2) hue-rotate(90deg)`;
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+}
+
+function loop() {
+  applyFilters(video);
+  requestAnimationFrame(loop);
+}
+
+video.addEventListener('play', () => {
+  loop();
+});
+</script>
 </body>
 </html>
