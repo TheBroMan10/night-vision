@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Night Vision Test</title>
+  <style>
+    video {
+      transform: scaleX(-1); /* mirror like a selfie */
+      filter: brightness(5) contrast(2) saturate(1.2);
+      width: 100vw;
+      height: 100vh;
+      object-fit: cover;
+    }
+  </style>
+</head>
+<body>
+  <video id="video" autoplay playsinline></video>
+
+  <script>
+    const video = document.getElementById('video');
+
+    // Request camera
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+      .then(stream => {
+        video.srcObject = stream;
+      })
+      .catch(err => {
+        console.error("Camera error:", err);
+      });
+  </script>
+</body>
+</html>
