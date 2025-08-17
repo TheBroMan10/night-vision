@@ -5,7 +5,7 @@
 <title>Live Exposure Boost</title>
 <style>
   body { margin:0; background:black; overflow:hidden; }
-  canvas { display:block; width:100vw; height:100vh; }
+  canvas { width:100vw; height:100vh; display:block; }
   .controls {
     position: fixed;
     bottom: 10px;
@@ -44,34 +44,34 @@ navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
   .then(stream => { video.srcObject = stream; })
   .catch(err => { alert("Camera access failed: " + err); });
 
-// Draw video to canvas with exposure multiplier
+// Draw video to canvas and apply Paint.NET-style exposure
 function startDrawing() {
-  // Set canvas to video size
   canvas.width = video.videoWidth || 640;
   canvas.height = video.videoHeight || 480;
 
-  function draw() {
+  function drawFrame() {
     if (video.readyState >= 2) { // HAVE_CURRENT_DATA
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      let frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const exp = parseFloat(exposureSlider.value);
+      const frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const exposure = parseFloat(exposureSlider.value);
 
       for (let i = 0; i < frame.data.length; i += 4) {
-        frame.data[i] = Math.min(255, frame.data[i] * exp);       // R
-        frame.data[i+1] = Math.min(255, frame.data[i+1] * exp);   // G
-        frame.data[i+2] = Math.min(255, frame.data[i+2] * exp);   // B
+        frame.data[i] = Math.min(255, frame.data[i] * exposure);       // R
+        frame.data[i+1] = Math.min(255, frame.data[i+1] * exposure);   // G
+        frame.data[i+2] = Math.min(255, frame.data[i+2] * exposure);   // B
+        // Alpha remains 255
       }
 
       ctx.putImageData(frame, 0, 0);
     }
-    requestAnimationFrame(draw);
+
+    requestAnimationFrame(drawFrame); // ~30–60 FPS
   }
 
-  draw();
+  drawFrame();
 }
 
-// Wait for video metadata to ensure proper canvas size
 video.addEventListener('loadedmetadata', startDrawing);
 </script>
 </body>
