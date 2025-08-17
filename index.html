@@ -1,31 +1,103 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Night Vision Test</title>
+  <meta charset="UTF-8">
+  <title>Night Vision WebCam</title>
   <style>
+    body {
+      margin: 0;
+      background: black;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
     video {
-      transform: scaleX(-1); /* mirror like a selfie */
-      filter: brightness(5) contrast(2) saturate(1.2);
+      transform: scaleX(-1); /* mirror like selfie */
       width: 100vw;
       height: 100vh;
       object-fit: cover;
+      filter: brightness(6) contrast(2) hue-rotate(90deg) saturate(1.2);
+    }
+    .controls {
+      position: fixed;
+      bottom: 10px;
+      background: rgba(0,0,0,0.6);
+      padding: 10px;
+      border-radius: 10px;
+      display: flex;
+      gap: 10px;
+      color: white;
+      font-family: sans-serif;
+    }
+    label {
+      display: flex;
+      flex-direction: column;
+      font-size: 12px;
+      align-items: center;
     }
   </style>
 </head>
 <body>
   <video id="video" autoplay playsinline></video>
 
+  <div class="controls">
+    <label>Brightness
+      <input id="brightness" type="range" min="1" max="15" step="0.1" value="6">
+    </label>
+    <label>Contrast
+      <input id="contrast" type="range" min="1" max="5" step="0.1" value="2">
+    </label>
+    <label>Gamma
+      <input id="gamma" type="range" min="0.1" max="3" step="0.1" value="1.2">
+    </label>
+  </div>
+
   <script>
     const video = document.getElementById('video');
+    const brightnessSlider = document.getElementById('brightness');
+    const contrastSlider = document.getElementById('contrast');
+    const gammaSlider = document.getElementById('gamma');
 
-    // Request camera
+    // Start camera
     navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
       .then(stream => {
         video.srcObject = stream;
       })
       .catch(err => {
-        console.error("Camera error:", err);
+        alert("Camera access failed: " + err);
       });
+
+    function updateFilters() {
+      const b = brightnessSlider.value;
+      const c = contrastSlider.value;
+      const g = gammaSlider.value;
+      // green tint via hue-rotate
+      video.style.filter =
+        `brightness(${b}) contrast(${c}) saturate(1.2) hue-rotate(90deg) ` +
+        `url(#gamma)`;
+    }
+
+    brightnessSlider.addEventListener('input', updateFilters);
+    contrastSlider.addEventListener('input', updateFilters);
+    gammaSlider.addEventListener('input', updateFilters);
+
+    // gamma via CSS filter is limited — we fake it with an SVG filter
+    const svgFilter = `
+      <svg xmlns="http://www.w3.org/2000/svg">
+        <filter id="gamma">
+          <feComponentTransfer>
+            <feFuncR type="gamma" amplitude="1" exponent="${gammaSlider.value}" offset="0"/>
+            <feFuncG type="gamma" amplitude="1" exponent="${gammaSlider.value}" offset="0"/>
+            <feFuncB type="gamma" amplitude="1" exponent="${gammaSlider.value}" offset="0"/>
+          </feComponentTransfer>
+        </filter>
+      </svg>`;
+    const blob = new Blob([svgFilter], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    document.body.insertAdjacentHTML("beforeend",
+      `<svg style="display:none;"><use href="${url}#gamma"/></svg>`);
+    updateFilters();
   </script>
 </body>
 </html>
