@@ -5,7 +5,7 @@
 <title>Live Exposure Boost</title>
 <style>
   body { margin:0; background:black; overflow:hidden; }
-  canvas { width:100vw; height:100vh; display:block; }
+  canvas { display:block; width:100vw; height:100vh; }
   .controls {
     position: fixed;
     bottom: 10px;
@@ -39,31 +39,34 @@ const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 const exposureSlider = document.getElementById('exposure');
 
-canvas.width = 320;  // downscale for speed
-canvas.height = 240;
-
+// Start camera
 navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
   .then(stream => { video.srcObject = stream; })
   .catch(err => { alert("Camera access failed: " + err); });
 
-// Apply Paint.NET-style exposure multiplication
-function applyExposure() {
-  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-  let frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const exp = parseFloat(exposureSlider.value);
+// Wait until video metadata is loaded
+video.addEventListener('loadedmetadata', () => {
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
 
-  for (let i = 0; i < frame.data.length; i += 4) {
-    frame.data[i] = Math.min(255, frame.data[i] * exp);       // Red
-    frame.data[i+1] = Math.min(255, frame.data[i+1] * exp);   // Green
-    frame.data[i+2] = Math.min(255, frame.data[i+2] * exp);   // Blue
-    // Alpha stays 255
+  function drawFrame() {
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    let frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const exp = parseFloat(exposureSlider.value);
+
+    for (let i = 0; i < frame.data.length; i += 4) {
+      frame.data[i] = Math.min(255, frame.data[i] * exp);       // R
+      frame.data[i+1] = Math.min(255, frame.data[i+1] * exp);   // G
+      frame.data[i+2] = Math.min(255, frame.data[i+2] * exp);   // B
+    }
+
+    ctx.putImageData(frame, 0, 0);
+    requestAnimationFrame(drawFrame);
   }
 
-  ctx.putImageData(frame, 0, 0);
-  requestAnimationFrame(applyExposure);  // ~60 FPS on most devices
-}
-
-video.addEventListener('play', () => { applyExposure(); });
+  drawFrame();
+});
 </script>
 </body>
 </html>
