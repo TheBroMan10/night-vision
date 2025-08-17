@@ -13,11 +13,11 @@
       align-items: center;
     }
     video {
-      transform: scaleX(1);
       width: 100vw;
       height: 100vh;
       object-fit: cover;
-      filter: brightness(6) contrast(2) hue-rotate(90deg) saturate(1.2);
+      transform: scaleX(1); /* make sure not mirrored */
+      filter: brightness(6) contrast(2) saturate(1.2) hue-rotate(90deg);
     }
     .controls {
       position: fixed;
@@ -35,6 +35,7 @@
       flex-direction: column;
       font-size: 12px;
       align-items: center;
+      color: white;
     }
   </style>
 </head>
@@ -48,8 +49,8 @@
     <label>Contrast
       <input id="contrast" type="range" min="1" max="5" step="0.1" value="2">
     </label>
-    <label>Gamma
-      <input id="gamma" type="range" min="0.1" max="3" step="0.1" value="1.2">
+    <label>Green
+      <input id="green" type="checkbox" checked>
     </label>
   </div>
 
@@ -57,47 +58,25 @@
     const video = document.getElementById('video');
     const brightnessSlider = document.getElementById('brightness');
     const contrastSlider = document.getElementById('contrast');
-    const gammaSlider = document.getElementById('gamma');
+    const greenToggle = document.getElementById('green');
 
     // Start camera
     navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-      .then(stream => {
-        video.srcObject = stream;
-      })
-      .catch(err => {
-        alert("Camera access failed: " + err);
-      });
+      .then(stream => { video.srcObject = stream; })
+      .catch(err => { alert("Camera access failed: " + err); });
 
     function updateFilters() {
       const b = brightnessSlider.value;
       const c = contrastSlider.value;
-      const g = gammaSlider.value;
-      // green tint via hue-rotate
-      video.style.filter =
-        `brightness(${b}) contrast(${c}) saturate(1.2) hue-rotate(90deg) ` +
-        `url(#gamma)`;
+      const green = greenToggle.checked ? "hue-rotate(90deg) saturate(1.2)" : "";
+      video.style.filter = `brightness(${b}) contrast(${c}) ${green}`;
     }
 
     brightnessSlider.addEventListener('input', updateFilters);
     contrastSlider.addEventListener('input', updateFilters);
-    gammaSlider.addEventListener('input', updateFilters);
+    greenToggle.addEventListener('change', updateFilters);
 
-    // gamma via CSS filter is limited — we fake it with an SVG filter
-    const svgFilter = `
-      <svg xmlns="http://www.w3.org/2000/svg">
-        <filter id="gamma">
-          <feComponentTransfer>
-            <feFuncR type="gamma" amplitude="1" exponent="${gammaSlider.value}" offset="0"/>
-            <feFuncG type="gamma" amplitude="1" exponent="${gammaSlider.value}" offset="0"/>
-            <feFuncB type="gamma" amplitude="1" exponent="${gammaSlider.value}" offset="0"/>
-          </feComponentTransfer>
-        </filter>
-      </svg>`;
-    const blob = new Blob([svgFilter], { type: 'image/svg+xml' });
-    const url = URL.createObjectURL(blob);
-    document.body.insertAdjacentHTML("beforeend",
-      `<svg style="display:none;"><use href="${url}#gamma"/></svg>`);
-    updateFilters();
+    updateFilters(); // initialize
   </script>
 </body>
 </html>
