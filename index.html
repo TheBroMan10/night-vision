@@ -24,7 +24,7 @@
 </head>
 <body>
 
-<video id="video" autoplay playsinline style="display:none;"></video>
+<video id="video" autoplay playsinline muted style="display:none"></video>
 <canvas id="canvas"></canvas>
 
 <div class="controls">
@@ -44,29 +44,35 @@ navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
   .then(stream => { video.srcObject = stream; })
   .catch(err => { alert("Camera access failed: " + err); });
 
-// Wait until video metadata is loaded
-video.addEventListener('loadedmetadata', () => {
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
+// Draw video to canvas with exposure multiplier
+function startDrawing() {
+  // Set canvas to video size
+  canvas.width = video.videoWidth || 640;
+  canvas.height = video.videoHeight || 480;
 
-  function drawFrame() {
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  function draw() {
+    if (video.readyState >= 2) { // HAVE_CURRENT_DATA
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    let frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const exp = parseFloat(exposureSlider.value);
+      let frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const exp = parseFloat(exposureSlider.value);
 
-    for (let i = 0; i < frame.data.length; i += 4) {
-      frame.data[i] = Math.min(255, frame.data[i] * exp);       // R
-      frame.data[i+1] = Math.min(255, frame.data[i+1] * exp);   // G
-      frame.data[i+2] = Math.min(255, frame.data[i+2] * exp);   // B
+      for (let i = 0; i < frame.data.length; i += 4) {
+        frame.data[i] = Math.min(255, frame.data[i] * exp);       // R
+        frame.data[i+1] = Math.min(255, frame.data[i+1] * exp);   // G
+        frame.data[i+2] = Math.min(255, frame.data[i+2] * exp);   // B
+      }
+
+      ctx.putImageData(frame, 0, 0);
     }
-
-    ctx.putImageData(frame, 0, 0);
-    requestAnimationFrame(drawFrame);
+    requestAnimationFrame(draw);
   }
 
-  drawFrame();
-});
+  draw();
+}
+
+// Wait for video metadata to ensure proper canvas size
+video.addEventListener('loadedmetadata', startDrawing);
 </script>
 </body>
 </html>
