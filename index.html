@@ -2,25 +2,34 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Night Vision Canvas</title>
+<title>Live Exposure Boost</title>
 <style>
-  body { margin:0; background:black; overflow:hidden; display:flex; flex-direction:column; align-items:center; }
+  body { margin:0; background:black; overflow:hidden; }
   canvas { width:100vw; height:100vh; display:block; }
-  .controls { position:fixed; bottom:10px; background:rgba(0,0,0,0.6); padding:10px; border-radius:10px; display:flex; gap:10px; color:white; font-family:sans-serif; }
-  label { display:flex; flex-direction:column; font-size:12px; align-items:center; color:white; }
+  .controls {
+    position: fixed;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.6);
+    padding: 10px;
+    border-radius: 10px;
+    display: flex;
+    gap: 10px;
+    color: white;
+    font-family: sans-serif;
+  }
+  label { display:flex; flex-direction:column; font-size:12px; align-items:center; }
 </style>
 </head>
 <body>
 
-<video id="video" autoplay playsinline style="display:none;"></video>
+<video id="video" autoplay playsinline muted style="display:none"></video>
 <canvas id="canvas"></canvas>
 
 <div class="controls">
-  <label>Brightness
-    <input id="brightness" type="range" min="0" max="3" step="0.05" value="1">
-  </label>
-  <label>Contrast
-    <input id="contrast" type="range" min="0" max="3" step="0.05" value="1">
+  <label>Exposure
+    <input id="exposure" type="range" min="0.5" max="10" step="0.1" value="2">
   </label>
 </div>
 
@@ -28,37 +37,42 @@
 const video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
+const exposureSlider = document.getElementById('exposure');
 
-const brightnessSlider = document.getElementById('brightness');
-const contrastSlider = document.getElementById('contrast');
-
-function updateCanvasSize() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-}
-window.addEventListener('resize', updateCanvasSize);
-updateCanvasSize();
-
+// Start camera
 navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
   .then(stream => { video.srcObject = stream; })
   .catch(err => { alert("Camera access failed: " + err); });
 
-function applyFilters(frame) {
-  const b = parseFloat(brightnessSlider.value);
-  const c = parseFloat(contrastSlider.value);
+// Draw video to canvas and apply Paint.NET-style exposure
+function startDrawing() {
+  canvas.width = video.videoWidth || 640;
+  canvas.height = video.videoHeight || 480;
 
-  ctx.filter = `brightness(${b}) contrast(${c}) saturate(1.2) hue-rotate(90deg)`;
-  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  function drawFrame() {
+    if (video.readyState >= 2) { // HAVE_CURRENT_DATA
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      const frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const exposure = parseFloat(exposureSlider.value);
+
+      for (let i = 0; i < frame.data.length; i += 4) {
+        frame.data[i] = Math.min(255, frame.data[i] * exposure);       // R
+        frame.data[i+1] = Math.min(255, frame.data[i+1] * exposure);   // G
+        frame.data[i+2] = Math.min(255, frame.data[i+2] * exposure);   // B
+        // Alpha remains 255
+      }
+
+      ctx.putImageData(frame, 0, 0);
+    }
+
+    requestAnimationFrame(drawFrame); // ~30–60 FPS
+  }
+
+  drawFrame();
 }
 
-function loop() {
-  applyFilters(video);
-  requestAnimationFrame(loop);
-}
-
-video.addEventListener('play', () => {
-  loop();
-});
+video.addEventListener('loadedmetadata', startDrawing);
 </script>
 </body>
 </html>
